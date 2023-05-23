@@ -1,0 +1,335 @@
+---
+title: "R Notebook for EXTRAAMAS 2023 paper 'Counterfactual, Contrastive and Hierarchical Explanations with Contextual Importance and Utility'"
+author: "Kary Främling"
+date: "`r Sys.Date()`"
+output:
+  md_document:
+    variant: gfm
+<!---output: html_notebook
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+***Author**: Kary Främling, 23 May 2023.*
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. Code chunks are executed by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*.
+
+## Counterfactual, Contrastive and Hierarchical Explanations with Contextual Importance and Utility
+
+This R notebook produces the results shown in the paper "Counterfactual, Contrastive and Hierarchical Explanations with Contextual Importance and Utility" by Kary Främling, (to be) published in the proceedings of the 5^th^ International Workshop on EXplainable and TRAnsparent AI and Multi-Agent Systems (EXTRAAMAS 2023).
+
+### Basic definitions
+
+***Contextual Importance (CI)*** expresses to what extent modifying the value of one or more feature(s) *x~{i}~* can affect the output value *y~j~* (or rather the output utility *u~j~(y~j~)*).
+
+***Contextual Utility (CU)*** expresses to what extent the current value(s) of given feature(s) contribute to obtaining a high output utility *u~j~*.
+
+***Contextual influence*** expresses how much feature(s) influence the output value (utility) relative to a *reference value* or *baseline*.
+
+*According to these definitions, methods such as Shapley value and LIME produce influence values (not importance values).*
+
+### Demonstration
+
+The code here works with the CIU implementation at <https://github.com/KaryFramling/ciu>, since the code push on 23 May 2023. Installation instructions are found there. An official package release to CRAN with the newest functionality will be made later.
+
+Once the CIU package has been installed, some preliminary setup:
+
+```{r}
+library(ciu)
+library(caret)
+library(reshape2)
+library(data.table)
+
+# Common text sizes everywhere by own theme.
+own_theme = theme(
+  plot.title = element_text(size = 18),
+  axis.title.x = element_text(size = 18),
+  axis.text = element_text(size = 16),
+  axis.title.y = element_text(size = 16),
+  strip.text = element_text(size=16)
+)
+
+# Function for having only two decimals max in plots.
+scaleFUN <- function(x) as.character(round(x, digits = 2))
+
+```
+
+### Counterfactual explanations and visualisation
+
+We begin with some "counterfactual" explanations using CIU. The used dataset is Titanic. We train a Random Forest model.
+
+```{r}
+# We use the existing data set from the DALEX package and do some small pre-processing on it. 
+library("DALEX")
+titanic_data <- titanic[,c("class", "gender", "age", "sibsp", "parch", "fare", "embarked", "survived")]
+titanic_data$survived <- factor(titanic_data$survived)
+titanic_data$gender <- factor(titanic_data$gender)
+titanic_data$embarked <- factor(titanic_data$embarked)
+titanic_data <- na.omit(titanic_data)
+
+# Train Random Forest model. 
+set.seed(42) # We want to be sure to always get same model
+inTrain <- createDataPartition(y=titanic_data$survived, p=0.75, list=FALSE) # 75% to train set
+titanic.train <- titanic_data[inTrain,]
+titanic.validate <- titanic_data[-inTrain,]
+kfoldcv <- trainControl(method="cv", number=10)
+if ( !exists("titanic_rf") ) {
+  titanic_rf <- caret::train(survived ~ ., titanic.train, method="rf", trControl=kfoldcv)
+}
+predictions <- predict(titanic_rf, newdata=titanic.validate)
+# Show confusion Matrix and performance metrics
+caret::confusionMatrix(predictions, titanic.validate$survived) 
+```
+
+We use the instance"Johnny D", from <https://ema.drwhy.ai>
+
+```{r}
+new_passenger <- data.frame(
+  class = factor("1st", levels = c("1st", "2nd", "3rd", "deck crew", "engineering crew", "restaurant staff", "victualling crew")),
+  gender = factor("male", levels = c("female", "male")),
+  age = 8,
+  sibsp = 0,
+  parch = 0,
+  fare = 72,
+  embarked = factor("Cherbourg", levels = c("Belfast", "Cherbourg", "Queenstown", "Southampton")),
+  survived = factor("yes", levels = c("no", "yes"))
+)
+```
+
+Then get CIU barplot explanation, first with CU value illustrated with colour. CI value is shown by the bar length:
+
+```{r}
+out.name <- "yes"
+survival_probability <- predict(titanic_rf, new_passenger, type="prob")$yes
+titanic_ciu <- ciu.new(titanic_rf, survived~., titanic.train)
+titanic_ciu.meta <- titanic_ciu$meta.explain(new_passenger[,-ncol(titanic.train)])
+p1 <- titanic_ciu$ggplot.col.ciu(new_passenger[,-ncol(titanic.train)], output.names = out.name, ciu.meta=titanic_ciu.meta) +
+  labs(title="", x ="", y="CI", fill="CU") + own_theme
+print(p1)
+```
+
+We see that "age" is the most important feature and the value "8" is good for the probability of survival. "Gender" is the second-most important feature and being "male" reduces the probability of survival.
+
+A more recent CIU visualization is more precise and "counterfactual" (answering a "what-if" question) in nature:
+
+```{r}
+p <- titanic_ciu$ggplot.col.ciu(new_passenger[,-ncol(titanic.train)], output.names = out.name, ciu.meta=titanic_ciu.meta, plot.mode = "overlap") +
+  labs(title="", x ="", y="CI", fill="CU") + own_theme
+print(p)
+```
+
+This visualization illustrates more clearly that the number of accompanying siblings (feature "sibsp") and parents (feature "parch") are both quite important too. For the case of "Johnny D", not having any siblings is favorable for the probability of survival, whereas traveling alone ("parch=0") reduces the probability of survival. This kind of insight would be useful for situations when there is a possibility to actually change the values somehow, as in the case of not being accepted to a school, not getting an employment or not getting a bank loan.
+
+This plot can also be combined with colors:
+
+```{r}
+p <- titanic_ciu$ggplot.col.ciu(new_passenger[,-ncol(titanic.train)], output.names = out.name, ciu.meta=titanic_ciu.meta, plot.mode = "overlap", cu.colours=NULL) +
+  labs(title="", x ="", y="CI", fill="CU") + own_theme
+print(p)
+```
+
+How to best visualize explanations is a science of its own. CIU can also give the same CIU explanation as text, as here (bold/italic etc effects require using the "crayon" package):
+
+```{r}
+cat(titanic_ciu$textual(new_passenger[,-ncol(titanic.train)], ciu.meta=titanic_ciu.meta, use.text.effects = TRUE))
+```
+
+The counterfactual explanations shown above are possible due to CIU's separation of (Contextual) **Importance** and **Utility**. It is also possible to produce Contextual **influence** explanations, which is what Shapley values, LIME and similar methods produce. Influence values are always relative to a reference value or baseline, which is here called "neutral.CU". "neutral.CU" can be anything in the interval [0,1] and the choice depends on what is considered a reference value for the application at hand (which is not possible e.g. with Shapley value). In order to simplify comparison with Shapley value, we here set "neutral.CU" to the utility value of the average output probability of survival (sorry for complicated phrase) and create the corresponding bar plot, using the usual colors used in LIME implementations:
+
+```{r}
+# Get average probability of survival, use as normal.CU
+neutral.CU <- sum(titanic_data$survived==out.name)/nrow(titanic_data)
+p2 <- titanic_ciu$ggplot.col.ciu(new_passenger[,-ncol(titanic.train)], output.names = out.name, ciu.meta=titanic_ciu.meta, use.influence=TRUE, neutral.CU=neutral.CU, low.color = "firebrick", high.color = "steelblue")
+p2 <- p2 + labs(title="", x ="", y = expression(phi)) + own_theme +
+  scale_y_continuous(labels=scaleFUN)
+print(p2)
+
+```
+
+It is possible to "explain" CI , CU and Contextual influence values visually for one (or two if 3D) feature at a time. The following plot shows how the probability of survival of "Johnny D" would evolve if modifying the value of the feature "age" and the values used by CIU:
+
+```{r}
+# Input-output plot for "age"
+print(titanic_ciu$ggplot.ciu(new_passenger, ind.input = 3, ind.output = 2, neutral.CU = neutral.CU, illustrate.CIU=TRUE))
+```
+
+The red dot shows the current value for "age" and the current probability of survival. In this case, CI=(ymax-ymin)/(MAX-MIN) so "age" is clearly very important. CU=(y-ymin)/(ymax-ymin) and it has a high value, which corresponds to that the red dot is situated in the higher part of the [ymin,ymax] range.
+
+The contextual influence is quite high and positive, which can be seen from the position of the red dot compared to the "y(u(0))" line in orange.
+
+**Global importance/influence/utility and Beeswarm visualisation**
+
+Beeswarms give an overview of an entire data set by showing CI/CU/influence values of every feature for every instance. As in <https://github.com/slundberg/shap,> we use the Boston data set and a Gradient\
+Boosting model. We train the GBM first:
+
+```{r}
+library(MASS)
+library(ggbeeswarm)
+kfoldcv <- trainControl(method="cv", number=10)
+gbm <- caret::train(medv ~ ., Boston, method="gbm", trControl=kfoldcv)
+```
+
+The we show CI values. The dot color represents the feature value. This takes a little while (maybe something like 30 seconds):
+
+```{r}
+ciu <- ciu.new(gbm, medv~., Boston)
+df <- ciu.explain.long.data.frame(ciu)
+p <- ciu.plots.beeswarm(df); print(p)
+```
+
+The CI beeswarm reveals for example that the higher the value of \"lstat\" (%lower status of the population), the higher is the CI (contextual/instance-specific importance) of \"lstat\".
+
+Next, we produce the corresponding beeswarm for Contextual influence values:
+
+```{r}
+mean.utility <- (mean(Boston$medv)-min(Boston$medv))/(max(Boston$medv)-min(Boston$medv))
+df <- ciu.explain.long.data.frame(ciu, neutral.CU=mean.utility)
+p <- ciu.plots.beeswarm(df, c("Feature","Influence","Norm.Value")); print(p)
+```
+
+The influence plot reveals that a high \"lstat\" value lowers the predicted home price and is nearly identical to the one produced for Shapley values. We use normal.CU = 0.390, which corresponds to the average price so the reference value is the same as for the Shapley value and this plot is indeed almost identical to the one shown at <https://github.com/slundberg/shap>. *(By now, it should also be clear that "importance" is not the same thing as "influence")*.
+
+We can also display a CU beeswarm:
+
+```{r}
+p <- ciu.plots.beeswarm(df, c("Feature","CU","Norm.Value")); print(p)
+```
+
+The CU plot essentially shows the correlation between feature values and utility values. For instancce, we can see that a high "crim" value gives a low CU value, so high criminality is obviously not good for the estate value.
+
+### Intermediate Concepts
+
+Ames housing is a data set with 2930 houses described by 81 features. A gradient boosting model was trained to predict the sale price based on the 80 other features. With 80 features a \"classical\" bar plot explanation becomes unreadable. We first train a GBM model:
+
+```{r}
+# Use ready-made AmesHousing R package
+#install.packages("AmesHousing")
+library(AmesHousing)
+ames <- data.frame(make_ames())
+
+# Training
+set.seed(22) # We always want to get same result here for consistency between values, graphs, ...
+target <- 'Sale_Price'
+trainIdx <- createDataPartition(ames[,target], p=0.8, list=FALSE)
+trainData = ames[trainIdx,]
+testData = ames[-trainIdx,]
+
+kfoldcv <- trainControl(method="cv", number=10)
+exec.time <- system.time(
+  Ames.gbm.caret <<- train(Sale_Price~., trainData, method="gbm", trControl=kfoldcv))
+# Training set performance
+res <- predict(Ames.gbm.caret, newdata=trainData)
+train.err <- RMSE(trainData$Sale_Price, res)
+# Test set performance
+res <- predict(Ames.gbm.caret, newdata=testData)
+test.err <- RMSE(testData$Sale_Price, res)
+```
+
+Then we produce a "raw" CIU explanation:
+
+```{r}
+# Very expensive instances
+most_expensive <- which(testData$Sale_Price>500000)
+# Cheapest ones
+cheapest <- which(testData$Sale_Price<50000)
+# Explanations
+inst.ind <- 433
+instance <- subset(ames[inst.ind,], select=-Sale_Price)
+plot.mode = "overlap"
+ciu.gbm <- ciu.new(Ames.gbm.caret, Sale_Price~., trainData)
+Ames_ciu.meta <- ciu.gbm$meta.explain(instance)
+p <- p <- ciu.gbm$ggplot.col.ciu(instance, ciu.meta=Ames_ciu.meta, plot.mode = plot.mode) + 
+  own_theme
+print(p)
+```
+
+Not possible to read or understand much from that "explanation". Furthermore, many features are strongly correlated, which causes misleading explanations because individual features have a small importance, whereas the joint importance can be significant. Intermediate Concepts solve these challenges. We define a vocabulary based on feature labels and common-sense knowledge about houses. Then we produce a top-level explanation:
+
+```{r}
+# Define vocabulary
+Ames.voc <- list(
+  "Garage"=c(58,59,60,61,62,63),
+  "Basement"=c(30,31,33,34,35,36,37,38,47,48),
+  "Lot"=c(3,4,7,8,9,10,11),
+  "Access"=c(13,14),
+  "House type"=c(1,15,16,21),
+  "House aesthetics"=c(22,23,24,25,26),
+  "House condition"=c(17,18,19,20,27,28),
+  "First floor surface"=c(43),
+  "Above ground living area"=which(names(ames)=="Gr_Liv_Area"))
+
+Ames.voc_ciu.gbm <- ciu.new(Ames.gbm.caret, Sale_Price~., trainData, vocabulary = Ames.voc)
+Ames.voc_ciu.meta <- Ames.voc_ciu.gbm$meta.explain(instance)
+
+# Need to use meta.explain here in order to guarantee same CIU values for
+# intermediate concepts when moving from one level to the other.
+meta.top <- Ames.voc_ciu.gbm$meta.explain(instance, concepts.to.explain=names(Ames.voc), n.samples = 1000)
+p <- Ames.voc_ciu.gbm$ggplot.col.ciu(instance, concepts.to.explain=names(Ames.voc),
+                                     plot.mode = plot.mode); print(p)
+```
+
+We can then ask for an explanation about what "House condition" is and why it's apparently important and has a good value:
+
+```{r}
+p <- Ames.voc_ciu.gbm$ggplot.col.ciu(instance, ind.inputs = Ames.voc$`House condition`, target.concept = "House condition", plot.mode = plot.mode)
+print(p)
+```
+
+### Contrastive Explanations
+
+Contrastive explanations answer questions such as \"Why alternative A rather than B\" or \"Why not alternative B rather than A\". Any value in the range [0,1] can be used for neutral.CU, including\
+CU values of an instance to compare with. We next produce a contrastive explanation for why Ames instance 433 (\$477919, previous Figures) is predicted to be more expensive than instance 1638 (\$439581). Contrastive values are in the range [−1, 1] by definition, so the differences between the two instances are small. The two instances have been selected to be quite similar because contrastive questions/explanations are often asked as "why did you buy that car, isn't that one just as good or better?". The code (not very cleaned-up, sorry):
+
+```{r}
+contrastive_theme = theme(
+  plot.title = element_text(size = 12),
+  axis.title.x = element_text(size = 12),
+  axis.text = element_text(size = 10),
+  axis.title.y = element_text(size = 12),
+  strip.text = element_text(size=12)
+)
+
+inst.ind1 <- inst.ind
+inst1 <- instance
+inst.ind2 <- 1638
+inst2 <- subset(ames[inst.ind2,], select=-Sale_Price)
+meta.top1 <- Ames.voc_ciu.gbm$meta.explain(inst1, concepts.to.explain=names(Ames.voc), n.samples = 1000)
+meta.top2 <- Ames.voc_ciu.gbm$meta.explain(inst2, concepts.to.explain=names(Ames.voc), n.samples = 1000)
+ciuvals.inst1 <- ciu.list.to.frame(meta.top1$ciuvals)
+ciuvals.inst2 <- ciu.list.to.frame(meta.top2$ciuvals)
+contrastive <- ciu.contrastive(ciuvals.inst1, ciuvals.inst2)
+p <- ciu.ggplot.contrastive(meta.top1, contrastive,
+                            c(paste("House", inst.ind1), paste("House", inst.ind1)),
+                            question = "Why?", negative.color = "firebrick", positive.color = "steelblue")
+p <- p +
+  labs(title = paste0("Why is ", inst.ind1, " more expensive than ", inst.ind2, "?")) +
+  contrastive_theme
+print(p)
+```
+
+It might be easier to make the comparison if plotting the contrastive explanation and the "usual ones" side by side:
+
+```{r}
+# Facet plot with contrastive and individual explanations
+p1 <- p + theme(legend.position = "none")
+p2 <- Ames.voc_ciu.gbm$ggplot.col.ciu(inst1, concepts.to.explain=names(Ames.voc),
+                                  plot.mode = "overlap") + contrastive_theme
+p3 <- Ames.voc_ciu.gbm$ggplot.col.ciu(inst2, concepts.to.explain=names(Ames.voc),
+                                  plot.mode = "overlap") + contrastive_theme
+library(gridExtra)
+grid.arrange(p1, p2, p3, nrow = 3)
+```
+
+That seems to become quite "squeezed" in the notebook - but easy to produce with different layout if needed.
+
+### Conclusion
+
+Some key take-aways:
+
+-   Counterfactual "what-if" explanations can not be produced by "influence-only" methods (Shapley value, LIME, ...).
+
+-   CIU's Intermediate Concepts take feature dependencies into account (which Shapley value, LIME, ... do not).
+
+-   CIU's contrastive explanations are "truly contrastive".
