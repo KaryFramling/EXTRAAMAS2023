@@ -36,7 +36,7 @@ The code here works with the CIU implementation at <https://github.com/KaryFraml
 
 Once the CIU package has been installed, some preliminary setup:
 
-```{r}
+```{r, message=FALSE}
 library(ciu)
 library(caret)
 library(reshape2)
@@ -60,7 +60,7 @@ scaleFUN <- function(x) as.character(round(x, digits = 2))
 
 We begin with some "counterfactual" explanations using CIU. The used dataset is Titanic. We train a Random Forest model.
 
-```{r}
+```{r, message=FALSE}
 # We use the existing data set from the DALEX package and do some small pre-processing on it. 
 library("DALEX")
 titanic_data <- titanic[,c("class", "gender", "age", "sibsp", "parch", "fare", "embarked", "survived")]
@@ -79,7 +79,11 @@ if ( !exists("titanic_rf") ) {
   titanic_rf <- caret::train(survived ~ ., titanic.train, method="rf", trControl=kfoldcv)
 }
 predictions <- predict(titanic_rf, newdata=titanic.validate)
-# Show confusion Matrix and performance metrics
+```
+
+\# Show confusion Matrix and performance metrics
+
+```{r}
 caret::confusionMatrix(predictions, titanic.validate$survived) 
 ```
 
@@ -138,7 +142,7 @@ cat(titanic_ciu$textual(new_passenger[,-ncol(titanic.train)], ciu.meta=titanic_c
 
 The counterfactual explanations shown above are possible due to CIU's separation of (Contextual) **Importance** and **Utility**. It is also possible to produce Contextual **influence** explanations, which is what Shapley values, LIME and similar methods produce. Influence values are always relative to a reference value or baseline, which is here called "neutral.CU". "neutral.CU" can be anything in the interval [0,1] and the choice depends on what is considered a reference value for the application at hand (which is not possible e.g. with Shapley value). In order to simplify comparison with Shapley value, we here set "neutral.CU" to the utility value of the average output probability of survival (sorry for complicated phrase) and create the corresponding bar plot, using the usual colors used in LIME implementations:
 
-```{r}
+```{r, message=FALSE}
 # Get average probability of survival, use as normal.CU
 neutral.CU <- sum(titanic_data$survived==out.name)/nrow(titanic_data)
 p2 <- titanic_ciu$ggplot.col.ciu(new_passenger[,-ncol(titanic.train)], output.names = out.name, ciu.meta=titanic_ciu.meta, use.influence=TRUE, neutral.CU=neutral.CU, low.color = "firebrick", high.color = "steelblue")
@@ -164,7 +168,7 @@ The contextual influence is quite high and positive, which can be seen from the 
 Beeswarms give an overview of an entire data set by showing CI/CU/influence values of every feature for every instance. As in <https://github.com/slundberg/shap,> we use the Boston data set and a Gradient\
 Boosting model. We train the GBM first:
 
-```{r}
+```{r, include=FALSE, message=FALSE, results='hide', warning=FALSE}
 library(MASS)
 library(ggbeeswarm)
 kfoldcv <- trainControl(method="cv", number=10)
@@ -201,9 +205,9 @@ The CU plot essentially shows the correlation between feature values and utility
 
 ### Intermediate Concepts
 
-Ames housing is a data set with 2930 houses described by 81 features. A gradient boosting model was trained to predict the sale price based on the 80 other features. With 80 features a \"classical\" bar plot explanation becomes unreadable. We first train a GBM model:
+Ames housing is a data set with 2930 houses described by 81 features. A gradient boosting model was trained to predict the sale price based on the 80 other features. With 80 features a \"classical\" bar plot explanation becomes unreadable. We first train a GBM model but the code chunk is hidden because it seemed impossible to hide the very long output from the training otherwise (see .Rmd file for the actual code).
 
-```{r}
+```{r, include=FALSE, message=FALSE, warning=FALSE}
 # Use ready-made AmesHousing R package
 #install.packages("AmesHousing")
 library(AmesHousing)
@@ -286,7 +290,7 @@ CU values of an instance to compare with. We next produce a contrastive explanat
 contrastive_theme = theme(
   plot.title = element_text(size = 12),
   axis.title.x = element_text(size = 12),
-  axis.text = element_text(size = 10),
+  axis.text = element_text(size = 14),
   axis.title.y = element_text(size = 12),
   strip.text = element_text(size=12)
 )
@@ -309,9 +313,9 @@ p <- p +
 print(p)
 ```
 
-It might be easier to make the comparison if plotting the contrastive explanation and the "usual ones" side by side:
+It might be easier to make the comparison if plotting the contrastive explanation and the "usual ones" together:
 
-```{r}
+```{r, fig.height=10}
 # Facet plot with contrastive and individual explanations
 p1 <- p + theme(legend.position = "none")
 p2 <- Ames.voc_ciu.gbm$ggplot.col.ciu(inst1, concepts.to.explain=names(Ames.voc),
