@@ -120,7 +120,7 @@ caret::confusionMatrix(predictions, titanic.validate$survived)
     ##        'Positive' Class : no              
     ## 
 
-We use the instance”Johnny D”, from <https://ema.drwhy.ai>
+We use the instance “Johnny D” from <https://ema.drwhy.ai>
 
 ``` r
 new_passenger <- data.frame(
@@ -166,16 +166,21 @@ print(p)
 
 ![](EXTRAAMAS_2023_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
 
-This visualization is more precise than the colour-coded one. Here, we
-can see that the number of accompanying siblings (feature “sibsp”) and
-parents (feature “parch”) are both quite important. For the case of
-“Johnny D”, not having any siblings is favorable for the probability of
-survival, whereas traveling without parents (“parch=0”) reduces the
-probability of survival. This kind of insight would be useful for
-situations when there is a possibility to actually change the values
-somehow in order to increase the output probability, as in the case of
-being accepted to a school, getting an employment or getting a bank
-loan.
+This visualization is more precise than the colour-coded one. The length
+of the transparent bar corresponds to the CI value. The solid bar
+corresponds to the CU value, so that when CU=1 the solid bar cover the
+transparent bar entirely, thereby showing that the current value of the
+instance for that feature is the best possible one.
+
+Here, we can see that the number of accompanying siblings (feature
+“sibsp”) and parents (feature “parch”) are both quite important. For the
+case of “Johnny D”, not having any siblings is favorable for the
+probability of survival, whereas traveling without parents (“parch=0”)
+reduces the probability of survival. This kind of insight would be
+useful for situations when there is a possibility to actually change the
+values somehow in order to increase the output probability, as in the
+case of being accepted to a school, getting an employment or getting a
+bank loan.
 
 This plot can also be combined with colors for CU:
 
@@ -274,9 +279,9 @@ print(p)
 
 ![](EXTRAAMAS_2023_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
 
-The CI beeswarm reveals for example that the higher the value of "lstat"
+The CI beeswarm reveals for example that the higher the value of “lstat”
 (%lower status of the population), the higher is the CI
-(contextual/instance-specific importance) of "lstat".
+(contextual/instance-specific importance) of “lstat”.
 
 Next, we produce the corresponding beeswarm for Contextual influence
 values:
@@ -290,7 +295,7 @@ print(p)
 
 ![](EXTRAAMAS_2023_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
 
-The influence plot reveals that a high "lstat" value lowers the
+The influence plot reveals that a high “lstat” value lowers the
 predicted home price. We use normal.CU = 0.390, which corresponds to the
 average price so the reference value is the same as for the Shapley
 value and this plot is indeed almost identical to the one shown at
@@ -314,7 +319,7 @@ high criminality is obviously not good for the estate value.
 
 Ames housing is a data set with 2930 houses described by 81 features. A
 gradient boosting model was trained to predict the sale price based on
-the 80 other features. With 80 features a "classical" bar plot
+the 80 other features. With 80 features a “classical” bar plot
 explanation becomes unreadable. We first train a GBM model but the code
 chunk is hidden because it seemed impossible to hide the very long
 output from the training (see .Rmd file for the actual code).
@@ -324,11 +329,6 @@ After training, the GBM model is stored in the variable
 80 input features:
 
 ``` r
-# Very expensive instances
-most_expensive <- which(testData$Sale_Price>500000)
-# Cheapest ones
-cheapest <- which(testData$Sale_Price<50000)
-# Explanations
 inst.ind <- 433
 instance <- subset(ames[inst.ind,], select=-Sale_Price)
 plot.mode = "overlap"
@@ -389,8 +389,8 @@ textual explanations etc.
 
 ### Contrastive Explanations
 
-Contrastive explanations answer questions such as "Why alternative A
-rather than B" or "Why not alternative B rather than A". In
+Contrastive explanations answer questions such as “Why alternative A
+rather than B” or “Why not alternative B rather than A”. In
 classification tasks, these questions might rather be of the kind “Why
 is this a cat and not a dog?”.
 
@@ -456,10 +456,16 @@ grid.arrange(p1, p2, p3, nrow = 3)
 
 Some key take-aways:
 
-- Counterfactual “what-if” explanations can not be produced by
-  “influence-only” methods (Shapley value, LIME, …).
+- Counterfactual “what-if” explanations are the default assumption with
+  CIU (and can not be produced by “influence-only” methods such as
+  Shapley value, LIME, …).
+
+- For “influence explanations”, Contextual influence is more flexible
+  (reference value) and typically has much lower variance than Shapley
+  value and LIME.
 
 - CIU’s Intermediate Concepts take feature dependencies into account
   (which Shapley value, LIME, … do not).
 
-- CIU’s contrastive explanations are “truly contrastive”.
+- CIU’s contrastive explanations are “truly contrastive” (not just
+  showing explanations for two instances side-by-side).
