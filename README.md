@@ -197,17 +197,17 @@ give the same CIU explanation as text, as here (bold/italic etc effects
 require using the “crayon” package):
 
 ``` r
-cat(titanic_ciu$textual(new_passenger[,-ncol(titanic.train)], ciu.meta=titanic_ciu.meta, use.text.effects = TRUE))
+cat(titanic_ciu$textual(new_passenger[,-ncol(titanic.train)], ciu.meta=titanic_ciu.meta, ind.output = 2, use.text.effects = TRUE))
 ```
 
-    ## The value of output 'no' for instance '1' is 0.364, which is bad (CU=0.364).
-    ## Feature 'age' is very important (CI=0.642) and value '8' is very bad (CU=0.103).
-    ## Feature 'gender' is slightly important (CI=0.334) and value 'male' is very good (CU=1).
-    ## Feature 'sibsp' is slightly important (CI=0.256) and value '0' is very bad (CU=0.008).
-    ## Feature 'fare' is slightly important (CI=0.256) and value '72' is good (CU=0.719).
-    ## Feature 'parch' is slightly important (CI=0.244) and value '0' is very good (CU=1).
-    ## Feature 'class' is slightly important (CI=0.212) and value '1st' is bad (CU=0.302).
-    ## Feature 'embarked' is not important (CI=0.074) and value 'Cherbourg' is very bad (CU=0).
+    ## The value of output 'yes' for instance '1' is 0.636, which is good (CU=0.636).
+    ## Feature 'age' is very important (CI=0.642) and value '8' is very good (CU=0.897).
+    ## Feature 'gender' is slightly important (CI=0.334) and value 'male' is very bad (CU=0).
+    ## Feature 'sibsp' is slightly important (CI=0.256) and value '0' is very good (CU=0.992).
+    ## Feature 'fare' is slightly important (CI=0.256) and value '72' is bad (CU=0.281).
+    ## Feature 'parch' is slightly important (CI=0.244) and value '0' is very bad (CU=0).
+    ## Feature 'class' is slightly important (CI=0.212) and value '1st' is good (CU=0.698).
+    ## Feature 'embarked' is not important (CI=0.074) and value 'Cherbourg' is very good (CU=1).
 
 The counterfactual explanations shown above are possible due to CIU’s
 separation of (Contextual) **Importance** and **Utility**. It is also
