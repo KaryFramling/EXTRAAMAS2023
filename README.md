@@ -289,8 +289,8 @@ values:
 ``` r
 mean.utility <- (mean(Boston$medv)-min(Boston$medv))/(max(Boston$medv)-min(Boston$medv))
 df <- ciu.explain.long.data.frame(ciu, neutral.CU=mean.utility)
-p <- ciu.plots.beeswarm(df, c("Feature","Influence","Norm.Value"))
-print(p)
+p1 <- ciu.plots.beeswarm(df, c("Feature","Influence","Norm.Value"))
+print(p1)
 ```
 
 ![](EXTRAAMAS_2023_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
@@ -300,7 +300,15 @@ predicted home price. We use normal.CU = 0.390, which corresponds to the
 average price so the reference value is the same as for the Shapley
 value and this plot is indeed almost identical to the one shown at
 <https://github.com/slundberg/shap>. *(By now, it should also be clear
-that “importance” is not the same thing as “influence”)*.
+that “importance” is not the same thing as “influence”)*. We plot
+importance and influence plots side by side to emphasize this:
+
+``` r
+library(gridExtra)
+grid.arrange(p, p1, nrow = 1)
+```
+
+![](EXTRAAMAS_2023_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
 
 We can also display a CU beeswarm:
 
@@ -309,7 +317,7 @@ p <- ciu.plots.beeswarm(df, c("Feature","CU","Norm.Value"))
 print(p)
 ```
 
-![](EXTRAAMAS_2023_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
+![](EXTRAAMAS_2023_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
 
 The CU plot shows how feature values are mapped to utility values. For
 instance, we can see that a high “crim” value gives a low CU value, so
@@ -339,7 +347,7 @@ p <- p <- ciu.gbm$ggplot.col.ciu(instance, ciu.meta=Ames_ciu.meta, plot.mode = p
 print(p)
 ```
 
-![](EXTRAAMAS_2023_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
+![](EXTRAAMAS_2023_files/figure-gfm/unnamed-chunk-17-1.png)<!-- -->
 
 It is not possible to understand much from that “explanation”.
 Furthermore, many features are strongly correlated or dependent, which
@@ -372,7 +380,7 @@ p <- Ames.voc_ciu.gbm$ggplot.col.ciu(instance, concepts.to.explain=names(Ames.vo
                                      plot.mode = plot.mode); print(p)
 ```
 
-![](EXTRAAMAS_2023_files/figure-gfm/unnamed-chunk-17-1.png)<!-- -->
+![](EXTRAAMAS_2023_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
 
 We can then ask for an explanation about what “House condition” is, as
 well as why it’s important and has a good value:
@@ -382,7 +390,7 @@ p <- Ames.voc_ciu.gbm$ggplot.col.ciu(instance, ind.inputs = Ames.voc$`House cond
 print(p)
 ```
 
-![](EXTRAAMAS_2023_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
+![](EXTRAAMAS_2023_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
 
 Intermediate concepts can also be used with Contextual influence,
 textual explanations etc.
@@ -433,7 +441,7 @@ p <- p +
 print(p)
 ```
 
-![](EXTRAAMAS_2023_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
+![](EXTRAAMAS_2023_files/figure-gfm/unnamed-chunk-20-1.png)<!-- -->
 
 It might be easier to make the comparison if plotting the contrastive
 explanation together with the counterfactual explanations of both
@@ -450,7 +458,7 @@ library(gridExtra)
 grid.arrange(p1, p2, p3, nrow = 3)
 ```
 
-![](EXTRAAMAS_2023_files/figure-gfm/unnamed-chunk-20-1.png)<!-- -->
+![](EXTRAAMAS_2023_files/figure-gfm/unnamed-chunk-21-1.png)<!-- -->
 
 ### Conclusion
 

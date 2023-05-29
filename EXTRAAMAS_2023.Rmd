@@ -191,11 +191,15 @@ Next, we produce the corresponding beeswarm for Contextual influence values:
 ```{r}
 mean.utility <- (mean(Boston$medv)-min(Boston$medv))/(max(Boston$medv)-min(Boston$medv))
 df <- ciu.explain.long.data.frame(ciu, neutral.CU=mean.utility)
-p <- ciu.plots.beeswarm(df, c("Feature","Influence","Norm.Value"))
-print(p)
+p1 <- ciu.plots.beeswarm(df, c("Feature","Influence","Norm.Value"))
+print(p1)
 ```
 
-The influence plot reveals that a high "lstat" value lowers the predicted home price. We use normal.CU = 0.390, which corresponds to the average price so the reference value is the same as for the Shapley value and this plot is indeed almost identical to the one shown at <https://github.com/slundberg/shap>. *(By now, it should also be clear that "importance" is not the same thing as "influence")*.
+The influence plot reveals that a high "lstat" value lowers the predicted home price. We use normal.CU = 0.390, which corresponds to the average price so the reference value is the same as for the Shapley value and this plot is indeed almost identical to the one shown at <https://github.com/slundberg/shap>. *(By now, it should also be clear that "importance" is not the same thing as "influence")*. We plot importance and influence plots side by side to emphasize this:
+```{r fig.width=7, fig.height=2}
+library(gridExtra)
+grid.arrange(p, p1, nrow = 1)
+```
 
 We can also display a CU beeswarm:
 
