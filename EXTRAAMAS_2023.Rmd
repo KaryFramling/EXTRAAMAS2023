@@ -138,7 +138,7 @@ print(p)
 How to best visualize explanations is a science of its own. CIU can also give the same CIU explanation as text, as here (bold/italic etc effects require using the "crayon" package):
 
 ```{r}
-cat(titanic_ciu$textual(new_passenger[,-ncol(titanic.train)], ciu.meta=titanic_ciu.meta, use.text.effects = TRUE))
+cat(titanic_ciu$textual(new_passenger[,-ncol(titanic.train)], ciu.meta=titanic_ciu.meta, ind.output = 2, use.text.effects = TRUE))
 ```
 
 The counterfactual explanations shown above are possible due to CIU's separation of (Contextual) **Importance** and **Utility**. It is also possible to produce Contextual **influence** explanations, which is what Shapley values, LIME and similar methods produce. Influence values are always relative to a reference value or baseline, which is here called "neutral.CU". "neutral.CU" can be anything in the interval [0,1] and the choice depends on what CU value considered a reference value for the application at hand (which is not possible e.g. with Shapley value). In order to simplify comparison with Shapley value, we here set "neutral.CU" to the utility value of the average output probability of survival (sorry for complicated phrase) and create the corresponding bar plot, using the usual colors used in LIME implementations:
@@ -196,6 +196,7 @@ print(p1)
 ```
 
 The influence plot reveals that a high "lstat" value lowers the predicted home price. We use normal.CU = 0.390, which corresponds to the average price so the reference value is the same as for the Shapley value and this plot is indeed almost identical to the one shown at <https://github.com/slundberg/shap>. *(By now, it should also be clear that "importance" is not the same thing as "influence")*. We plot importance and influence plots side by side to emphasize this:
+
 ```{r fig.width=7, fig.height=2}
 library(gridExtra)
 grid.arrange(p, p1, nrow = 1)
